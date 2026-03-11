@@ -1,23 +1,54 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { Star, Camera } from 'lucide-react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { Star } from 'lucide-react-native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const API_URL = 'http://10.10.0.152:5001/api';
 const TAGS = ['cousins', 'friends', 'family', 'couple', 'others'];
 
 export default function ReviewScreen({ route, navigation }) {
+    const { placeId, name, address, coordinates } = route.params || {};
     const [rating, setRating] = useState(0);
     const [selectedTag, setSelectedTag] = useState('');
     const [review, setReview] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = () => {
-        // API call to backend/api/locations/review
-        alert('Review Submitted! Thanks for helping others.');
-        navigation.goBack();
+    const handleSubmit = async () => {
+        if (!rating || !selectedTag) {
+            Alert.alert("Missing Fields", "Please select a rating and a travel group.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const userId = await AsyncStorage.getItem('userId');
+
+            await axios.post(`${API_URL}/locations/review`, {
+                placeId,
+                name: name || "Unknown Place",
+                address: address || "Unknown Address",
+                coordinates: coordinates || { lat: 0, lng: 0 },
+                rating,
+                review,
+                groupType: selectedTag.charAt(0).toUpperCase() + selectedTag.slice(1),
+                userId
+            });
+
+            Alert.alert('Visit Logged!', 'Your review was submitted and this place has been added to your Visited profile.');
+            navigation.goBack();
+        } catch (error) {
+            console.error("Submission error", error);
+            Alert.alert("Error", "Could not submit review.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <ScrollView style={styles.container}>
-            <Text style={styles.title}>How was your visit?</Text>
+            <Text style={styles.title}>You visited {name || 'this location'}!</Text>
+            <Text style={styles.subtitleText}>How was your visit?</Text>
 
             {/* Star Rating */}
             <View style={styles.starsContainer}>
@@ -58,8 +89,12 @@ export default function ReviewScreen({ route, navigation }) {
                 onChangeText={setReview}
             />
 
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.submitText}>Post Review</Text>
+            <TouchableOpacity
+                style={[styles.submitButton, loading && { opacity: 0.7 }]}
+                onPress={handleSubmit}
+                disabled={loading}
+            >
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Post Review & Add to Profile</Text>}
             </TouchableOpacity>
         </ScrollView>
     );
@@ -74,9 +109,16 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        marginTop: 40,
-        marginBottom: 20,
+        marginTop: 20,
+        marginBottom: 10,
         textAlign: 'center',
+        paddingHorizontal: 20,
+    },
+    subtitleText: {
+        fontSize: 18,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 30,
     },
     starsContainer: {
         flexDirection: 'row',

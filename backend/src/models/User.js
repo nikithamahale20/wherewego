@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
     updatedAt: Date
   },
   groupTags: [{ type: String, enum: ['cousins', 'friends', 'family', 'couple', 'others'] }],
+  interests: [{ type: String, enum: ['Nature', 'Food', 'Adventure', 'Historical places', 'Religious places'] }],
   visitedPlaces: [{
     placeId: String,
     visitDate: { type: Date, default: Date.now }
